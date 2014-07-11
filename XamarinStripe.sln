@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XamarinStripe", "XamarinStripe\XamarinStripe.csproj", "{218CF4C2-C457-43E4-9D1B-0880D10181FF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XamarinStripe", "XamarinStripe\XamarinStripe.csproj", "{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaymentTest", "PaymentTest\PaymentTest.csproj", "{8E81B2FD-1F8C-4C8C-B5B5-B8600709E505}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaymentTest", "PaymentTest\PaymentTest.csproj", "{F96333A4-F3CD-499B-BA15-E5A902BB42EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,6 +25,18 @@ Global
 		{218CF4C2-C457-43E4-9D1B-0880D10181FF}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{218CF4C2-C457-43E4-9D1B-0880D10181FF}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{218CF4C2-C457-43E4-9D1B-0880D10181FF}.Release|x86.ActiveCfg = Release|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Debug|x86.Build.0 = Debug|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Release|x86.ActiveCfg = Release|Any CPU
+		{6F4C3C80-15FF-4730-81A0-8AFC6F1CB5FD}.Release|x86.Build.0 = Release|Any CPU
 		{8E81B2FD-1F8C-4C8C-B5B5-B8600709E505}.Debug|Any CPU.ActiveCfg = Debug|x86
 		{8E81B2FD-1F8C-4C8C-B5B5-B8600709E505}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
 		{8E81B2FD-1F8C-4C8C-B5B5-B8600709E505}.Debug|Mixed Platforms.Build.0 = Debug|x86
@@ -35,13 +47,24 @@ Global
 		{8E81B2FD-1F8C-4C8C-B5B5-B8600709E505}.Release|Mixed Platforms.Build.0 = Release|x86
 		{8E81B2FD-1F8C-4C8C-B5B5-B8600709E505}.Release|x86.ActiveCfg = Release|x86
 		{8E81B2FD-1F8C-4C8C-B5B5-B8600709E505}.Release|x86.Build.0 = Release|x86
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Debug|x86.Build.0 = Debug|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Release|x86.ActiveCfg = Release|Any CPU
+		{F96333A4-F3CD-499B-BA15-E5A902BB42EC}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = PaymentTest\PaymentTest.csproj
 		Policies = $0
 		$0.TextStylePolicy = $1
 		$1.FileWidth = 120
-		$1.RemoveTrailingWhitespace = True
 		$1.inheritsSet = VisualStudio
 		$1.inheritsScope = text/plain
 		$1.scope = text/x-csharp

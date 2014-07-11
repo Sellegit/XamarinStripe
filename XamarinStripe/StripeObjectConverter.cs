@@ -19,6 +19,7 @@ using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using System.Reflection;
 
 namespace Xamarin.Payments.Stripe {
     public class StripeObjectConverter : JsonConverter {
@@ -26,7 +27,7 @@ namespace Xamarin.Payments.Stripe {
 
         public override bool CanConvert (Type objectType)
         {
-            return typeof (StripeObject).IsAssignableFrom (objectType);
+            return typeof (StripeObject).GetTypeInfo().IsAssignableFrom (objectType.GetTypeInfo());
         }
 
         StripeObject FindType (JObject jobj)

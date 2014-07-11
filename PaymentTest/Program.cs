@@ -21,24 +21,25 @@ using System;
 using System.Collections.Generic;
 using Xamarin.Payments.Stripe;
 using Newtonsoft.Json;
+using System.Threading.Tasks;
 
 namespace PaymentTest {
     class Program {
         static void Main (string [] args)
         {
-            StripePayment payment = new StripePayment ("vtUQeOtUnYr7PGCLQ96Ul4zqpDUO4sOE");
-            TestSimpleCharge (payment);
-            //TestPartialRefund (payment);
-            //TestCustomer (payment);
-            TestCustomerAndCharge (payment);
-            //TestGetCharges (payment);
-            TestGetCustomers (payment);
-            //TestCreateGetToken (payment);
-            //TestCreatePlanGetPlan (payment);
-            //TestCreateSubscription (payment);
-            //TestCreateInvoiceItems (payment);
-            //TestInvoices (payment);
-            //TestInvoices2 (payment);
+            StripePayment payment = new StripePayment ("sk_test_BQokikJOvBiI2HlWgH4olfQ2");
+            TestSimpleCharge (payment).Wait();
+            TestPartialRefund (payment).Wait();
+            TestCustomer (payment).Wait();
+            TestCustomerAndCharge (payment).Wait ();
+            TestGetCharges (payment).Wait();
+            TestGetCustomers (payment).Wait();
+            TestCreateGetToken (payment).Wait();
+//            TestCreatePlanGetPlan (payment).Wait();
+//            TestCreateSubscription (payment).Wait();
+//            TestCreateInvoiceItems (payment).Wait();
+            //TestInvoices (payment).Wait();
+            //TestInvoices2 (payment).Wait();
             TestDeserializePastDue ();
         }
 
@@ -71,159 +72,159 @@ namespace PaymentTest {
             };
         }
 
-        static void TestSimpleCharge (StripePayment payment)
+        static async Task TestSimpleCharge (StripePayment payment)
         {
             StripeCreditCardInfo cc = GetCC ();
-            StripeCharge charge = payment.Charge (5001, "usd", cc, "Test charge");
+            StripeCharge charge = await payment.Charge (5001, "usd", cc, "Test charge");
             Console.WriteLine (charge);
             string charge_id = charge.ID;
-            StripeCharge charge_info = payment.GetCharge (charge_id);
+            StripeCharge charge_info = await payment.GetCharge (charge_id);
             Console.WriteLine (charge_info);
 
-            StripeCharge refund = payment.Refund (charge_info.ID);
+            StripeCharge refund = await payment.Refund (charge_info.ID);
             Console.WriteLine (refund.Created);
         }
 
-        static void TestPartialRefund (StripePayment payment)
+        static async Task TestPartialRefund (StripePayment payment)
         {
             StripeCreditCardInfo cc = GetCC ();
-            StripeCharge charge = payment.Charge (5001, "usd", cc, "Test partial refund");
+            StripeCharge charge = await payment.Charge (5001, "usd", cc, "Test partial refund");
             Console.WriteLine (charge.ID);
-            StripeCharge refund = payment.Refund (charge.ID, 2499);
+            StripeCharge refund = await payment.Refund (charge.ID, 2499);
             Console.WriteLine (refund.Amount);
         }
 
-        static void TestCustomer (StripePayment payment)
+        static async Task TestCustomer (StripePayment payment)
         {
             StripeCustomerInfo customer = new StripeCustomerInfo ();
             //customer.Card = GetCC ();
-            StripeCustomer customer_resp = payment.CreateCustomer (customer);
+            StripeCustomer customer_resp = await payment.CreateCustomer (customer);
             string customer_id = customer_resp.ID;
-            StripeCustomer customer_info = payment.GetCustomer (customer_id);
+            StripeCustomer customer_info = await payment.GetCustomer (customer_id);
             Console.WriteLine (customer_info);
-            StripeCustomer ci2 = payment.DeleteCustomer (customer_id);
+            StripeCustomer ci2 = await payment.DeleteCustomer (customer_id);
             if (ci2.Deleted == false)
                 throw new Exception ("Failed to delete " + customer_id);
         }
 
-        static void TestCustomerAndCharge (StripePayment payment)
+        static async Task TestCustomerAndCharge (StripePayment payment)
         {
             StripeCustomerInfo customer = new StripeCustomerInfo ();
             //customer.Card = GetCC ();
-            StripeCustomer response = payment.CreateCustomer (customer);
+            StripeCustomer response = await payment.CreateCustomer (customer);
             string customer_id = response.ID;
-            StripeCustomer customer_info = payment.GetCustomer (customer_id);
+            StripeCustomer customer_info = await payment.GetCustomer (customer_id);
             Console.WriteLine (customer_info);
             StripeCustomerInfo info_update = new StripeCustomerInfo ();
             info_update.Card = GetCC ();
-            StripeCustomer update_resp = payment.UpdateCustomer (customer_id, info_update);
+            StripeCustomer update_resp = await payment.UpdateCustomer (customer_id, info_update);
             Console.Write ("Customer updated with CC. Press ENTER to continue...");
             Console.Out.Flush ();
             Console.ReadLine ();
-            StripeCustomer ci2 = payment.DeleteCustomer (customer_id);
+            StripeCustomer ci2 = await payment.DeleteCustomer (customer_id);
             if (ci2.Deleted == false)
                 throw new Exception ("Failed to delete " + customer_id);
         }
 
-        static void TestGetCharges (StripePayment payment)
+        static async Task TestGetCharges (StripePayment payment)
         {
-            var charges = payment.GetCharges (0, 10);
+            var charges = await payment.GetCharges (0, 10);
             Console.WriteLine (charges.Data.Count);
         }
 
-        static void TestGetCustomers (StripePayment payment)
+        static async Task TestGetCustomers (StripePayment payment)
         {
-            var customers = payment.GetCustomers (0, 10);
+            var customers = await payment.GetCustomers (0, 10);
             Console.WriteLine (customers.Data.Count);
         }
 
-        static void TestCreateGetToken (StripePayment payment)
+        static async Task TestCreateGetToken (StripePayment payment)
         {
-            StripeCreditCardToken tok = payment.CreateToken (GetCC ());
-            StripeCreditCardToken tok2 = payment.GetToken (tok.ID);
+            StripeCreditCardToken tok = await payment.CreateToken (GetCC ());
+            StripeCreditCardToken tok2 = await payment.GetToken (tok.ID);
         }
 
-        static void TestCreatePlanGetPlan (StripePayment payment)
+        static async Task TestCreatePlanGetPlan (StripePayment payment)
         {
-            StripePlan plan = CreatePlan (payment);
-            var plans = payment.GetPlans (10, 10);
+            StripePlan plan = await CreatePlan (payment);
+            var plans = await payment.GetPlans (10, 10);
             Console.WriteLine (plans.Total);
         }
 
-        static StripePlan CreatePlan (StripePayment payment)
+        static async Task<StripePlan> CreatePlan (StripePayment payment)
         {
-            StripePlan plan = payment.CreatePlan (GetPlanInfo ());
-            StripePlan plan2 = payment.GetPlan (plan.ID);
+            StripePlan plan = await payment.CreatePlan (GetPlanInfo ());
+            StripePlan plan2 = await payment.GetPlan (plan.ID);
             //DeletePlan (plan2, payment);
             return plan2;
         }
 
-        static StripePlan DeletePlan (StripePlan plan, StripePayment payment)
+        static async Task<StripePlan> DeletePlan (StripePlan plan, StripePayment payment)
         {
-            StripePlan deleted = payment.DeletePlan (plan.ID);
+            StripePlan deleted = await payment.DeletePlan (plan.ID);
             return deleted;
         }
 
-        static void TestCreateSubscription (StripePayment payment)
+        static async Task TestCreateSubscription (StripePayment payment)
         {
-            StripeCustomer cust = payment.CreateCustomer (new StripeCustomerInfo {
+            StripeCustomer cust = await payment.CreateCustomer (new StripeCustomerInfo {
                 Card = GetCC ()
             });
             //StripePlan temp = new StripePlan { ID = "myplan" };
             //DeletePlan (temp, payment);
-            StripePlan plan = CreatePlan (payment);
-            StripeSubscription sub = payment.Subscribe (cust.ID, new StripeSubscriptionInfo {
+            StripePlan plan = await CreatePlan (payment);
+            StripeSubscription sub = await payment.Subscribe (cust.ID, new StripeSubscriptionInfo {
                 Card = GetCC (),
                 Plan = "myplan",
                 Prorate = true
             });
-            StripeSubscription sub2 = payment.GetSubscription (sub.CustomerID);
+            StripeSubscription sub2 = await payment.GetSubscription (sub.CustomerID);
             TestDeleteSubscription (cust, payment);
             DeletePlan (plan, payment);
         }
 
-        static StripeSubscription TestDeleteSubscription (StripeCustomer customer, StripePayment payment)
+        static async Task<StripeSubscription> TestDeleteSubscription (StripeCustomer customer, StripePayment payment)
         {
-            StripeSubscription sub = payment.Unsubscribe (customer.ID, true);
+            StripeSubscription sub = await payment.Unsubscribe (customer.ID, true);
             return sub;
         }
 
-        static void TestCreateInvoiceItems (StripePayment payment)
+        static async Task TestCreateInvoiceItems (StripePayment payment)
         {
-            StripeCustomer cust = payment.CreateCustomer (new StripeCustomerInfo ());
+            StripeCustomer cust = await payment.CreateCustomer (new StripeCustomerInfo ());
             StripeInvoiceItemInfo info = GetInvoiceItemInfo ();
             info.CustomerID = cust.ID;
-            StripeInvoiceItem item = payment.CreateInvoiceItem (info);
+            StripeInvoiceItem item = await payment.CreateInvoiceItem (info);
             StripeInvoiceItemInfo newInfo = GetInvoiceItemInfo ();
             newInfo.Description = "Invoice item: " + Guid.NewGuid ().ToString ();
-            StripeInvoiceItem item2 = payment.UpdateInvoiceItem (item.ID, newInfo);
-            StripeInvoiceItem item3 = payment.GetInvoiceItem (item2.ID);
+            StripeInvoiceItem item2 = await payment.UpdateInvoiceItem (item.ID, newInfo);
+            StripeInvoiceItem item3 = await payment.GetInvoiceItem (item2.ID);
             if (item.Description == item3.Description)
                 throw new Exception ("Update failed");
-            StripeInvoiceItem deleted = payment.DeleteInvoiceItem (item2.ID);
+            StripeInvoiceItem deleted = await payment.DeleteInvoiceItem (item2.ID);
             if (!deleted.Deleted.HasValue && deleted.Deleted.Value)
                 throw new Exception ("Delete failed");
-            var items = payment.GetInvoiceItems (10, 10, null);
+            var items = await payment.GetInvoiceItems (10, 10, null);
             Console.WriteLine (items.Total);
             payment.DeleteCustomer (cust.ID);
         }
 
-        static void TestInvoices (StripePayment payment)
+        static async Task TestInvoices (StripePayment payment)
         {
-            var invoices = payment.GetInvoices (10, 10);
-            StripeInvoice inv = payment.GetInvoice (invoices.Data [0].ID);
-            StripeCustomer cust = payment.CreateCustomer (new StripeCustomerInfo ());
-            StripeSubscription sub = payment.Subscribe (cust.ID, new StripeSubscriptionInfo {
+            var invoices = await payment.GetInvoices (10, 10);
+            StripeInvoice inv = await payment.GetInvoice (invoices.Data [0].ID);
+            StripeCustomer cust = await payment.CreateCustomer (new StripeCustomerInfo ());
+            StripeSubscription sub = await payment.Subscribe (cust.ID, new StripeSubscriptionInfo {
                 Card = GetCC ()
             });
-            StripeInvoice inv2 = payment.GetUpcomingInvoice (cust.ID);
+            StripeInvoice inv2 = await payment.GetUpcomingInvoice (cust.ID);
             payment.Unsubscribe (cust.ID, true);
             payment.DeleteCustomer (cust.ID);
         }
 
-        static void TestInvoices2 (StripePayment payment)
+        static async Task TestInvoices2 (StripePayment payment)
         {
-            StripeCustomer cust = payment.GetCustomer ("cus_ulcOcy5Seu2dpq");
+            StripeCustomer cust = await payment.GetCustomer ("cus_ulcOcy5Seu2dpq");
             StripePlanInfo planInfo = new StripePlanInfo{
                 Amount = 1999,
                 ID = "testplan",
@@ -232,13 +233,13 @@ namespace PaymentTest {
             //TrialPeriod = 7
             };
             //payment.DeletePlan (planInfo.ID);
-            StripePlan plan = payment.CreatePlan (planInfo);
+            StripePlan plan = await payment.CreatePlan (planInfo);
             StripeSubscriptionInfo subInfo = new StripeSubscriptionInfo{
                 Card = GetCC (),
                 Plan = planInfo.ID,
                 Prorate = true
             };
-            StripeSubscription sub = payment.Subscribe (cust.ID, subInfo);
+            StripeSubscription sub = await payment.Subscribe (cust.ID, subInfo);
             payment.CreateInvoiceItem (new StripeInvoiceItemInfo {
                 CustomerID = cust.ID,
                 Amount = 1337,
@@ -246,7 +247,7 @@ namespace PaymentTest {
             });
 
             var invoices = payment.GetInvoices (0, 10, cust.ID);
-            StripeInvoice upcoming = payment.GetUpcomingInvoice (cust.ID);
+            StripeInvoice upcoming = await payment.GetUpcomingInvoice (cust.ID);
             payment.Unsubscribe (cust.ID, true);
             payment.DeletePlan (planInfo.ID);
             foreach (StripeLineItem line in upcoming) {

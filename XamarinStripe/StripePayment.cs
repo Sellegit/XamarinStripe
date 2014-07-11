@@ -24,36 +24,69 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Web;
-
+using System.Net.Http;
 using Newtonsoft.Json;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace Xamarin.Payments.Stripe {
     public class StripePayment {
         static readonly string api_endpoint = "https://api.stripe.com/v1";
         static readonly string subscription_path = "{0}/customers/{1}/subscription";
         static readonly string user_agent = "Stripe .NET v1";
+
         static readonly Encoding encoding = Encoding.UTF8;
         ICredentials credential;
+        string apiKey;
 
         public StripePayment (string api_key)
         {
             credential = new NetworkCredential (api_key, "");
+            apiKey = api_key;
             TimeoutSeconds = 80;
         }
+        public static string Base64Encode(string plainText) {
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
+            return System.Convert.ToBase64String(plainTextBytes);
+        }
+
         #region Shared
-        protected virtual WebRequest SetupRequest (string method, string url)
+        protected virtual Task<HttpResponseMessage> SetupRequest (HttpMethod method, string url, string body)
         {
-            WebRequest req = (WebRequest) WebRequest.Create (url);
-            req.Method = method;
-            if (req is HttpWebRequest) {
-                ((HttpWebRequest) req).UserAgent = user_agent;
+            var requestMessage = new HttpRequestMessage (method, url);
+            requestMessage.Headers.Add ("User-Agent", user_agent);
+            var concat = apiKey + ":";
+            Debug.WriteLine (concat);
+            Debug.WriteLine (Base64Encode (concat));
+            requestMessage.Headers.Add ("Authorization", "Basic " + Base64Encode (concat));
+//            if (method == HttpMethod.Post) {
+//                requestMessage.Headers.Add ("Content-Type", "application/x-www-form-urlencoded");
+//            }
+            Debug.WriteLine ("content: " + body);
+            if (body != null) {
+                requestMessage.Content = new StringContent (body);
+                if (method == HttpMethod.Post) {
+                    requestMessage.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue ("application/x-www-form-urlencoded");
+                }
             }
-            req.Credentials = credential;
-            req.PreAuthenticate = true;
-            req.Timeout = TimeoutSeconds * 1000;
-            if (method == "POST")
-                req.ContentType = "application/x-www-form-urlencoded";
-            return req;
+
+
+           
+            //var handler = new HttpClientHandler ();
+            //handler.Credentials = credential;
+            //handler.PreAuthenticate = true;
+
+            var client = new HttpClient ();
+            client.Timeout = TimeSpan.FromSeconds (TimeoutSeconds);
+
+            return client.SendAsync (requestMessage);
+            //requestMessage.Content = new HttpContent
+            //client.SendAsync(
+            //return new HttpClient(handler)
+            //HttpclientFa
+            //httpclientfa
+
+            //return req;
         }
 
         static string GetResponseAsString (WebResponse response)
@@ -63,31 +96,51 @@ namespace Xamarin.Payments.Stripe {
             }
         }
 
-        protected virtual T DoRequest<T> (string endpoint, string method = "GET", string body = null)
+        protected virtual async Task<T> DoRequest<T> (string endpoint)
         {
-            var json = DoRequest (endpoint, method, body);
+            return await DoRequest<T> (endpoint, HttpMethod.Get, null);
+        }
+
+        protected virtual async Task<T> DoRequest<T> (string endpoint, HttpMethod method, string body)
+        {
+            var json = await DoRequest (endpoint, method, body);
             return JsonConvert.DeserializeObject<T> (json);
         }
 
-        protected virtual string DoRequest (string endpoint)
+        protected virtual async Task<string> DoRequest (string endpoint)
         {
-            return DoRequest (endpoint, "GET", null);
+            return await DoRequest (endpoint, HttpMethod.Get, null);
         }
 
-        protected virtual string DoRequest (string endpoint, string method, string body)
+        protected virtual async Task<string> DoRequest (string endpoint, HttpMethod method, string body)
         {
-            string result = null;
-            WebRequest req = SetupRequest (method, endpoint);
-            if (body != null) {
-                byte [] bytes = encoding.GetBytes (body.ToString ());
-                req.ContentLength = bytes.Length;
-                using (Stream st = req.GetRequestStream ()) {
-                    st.Write (bytes, 0, bytes.Length);
-                }
-            }
 
+
+            //string result = null;
+            var req = SetupRequest (method, endpoint, body);
+            var responseMessage = await req;
+            var result = await responseMessage.Content.ReadAsStringAsync ();
+            if (responseMessage.IsSuccessStatusCode) {
+                return result;
+            } else {
+                throw StripeException.GetFromJSON(responseMessage.StatusCode, result);
+            }
+            /*    } catch (HttpRequestException ex) {
+
+            }
+            //req.ContinueWith(x => x.Result.
+//            WebRequest req = SetupRequest (method, endpoint, body);
+//            if (body != null) {
+//                byte [] bytes = encoding.GetBytes (body.ToString ());
+//                req.ContentLength = bytes.Length;
+//                using (Stream st = req.GetRequestStream ()) {
+//                    st.Write (bytes, 0, bytes.Length);
+//                }
+//            }
+            var response = await req;
+            //response.
             try {
-                using (WebResponse resp = (WebResponse) req.GetResponse ()) {
+                using (WebResponse resp = (WebResponse) req.EndGetResponse()) {
                     result = GetResponseAsString (resp);
                 }
             } catch (WebException wexc) {
@@ -103,7 +156,7 @@ namespace Xamarin.Payments.Stripe {
                 }
                 throw;
             }
-            return result;
+            return result;*/
         }
 
         protected virtual StringBuilder UrlEncode (IUrlEncoderInfo infoInstance)
@@ -117,23 +170,23 @@ namespace Xamarin.Payments.Stripe {
 
         #endregion
         #region Charge
-        public StripeCharge Charge (int amount_cents, string currency, string customer, string description)
+        public async Task<StripeCharge> Charge (int amount_cents, string currency, string customer, string description)
         {
             if (String.IsNullOrEmpty (customer))
                 throw new ArgumentNullException ("customer");
 
-            return Charge (amount_cents, currency, customer, null, description);
+            return await Charge (amount_cents, currency, customer, null, description);
         }
 
-        public StripeCharge Charge (int amount_cents, string currency, StripeCreditCardInfo card, string description)
+        public async Task<StripeCharge> Charge (int amount_cents, string currency, StripeCreditCardInfo card, string description)
         {
             if (card == null)
                 throw new ArgumentNullException ("card");
 
-            return Charge (amount_cents, currency, null, card, description);
+            return await Charge (amount_cents, currency, null, card, description);
         }
 
-        StripeCharge Charge (int amount_cents, string currency, string customer, StripeCreditCardInfo card, string description)
+        async Task<StripeCharge> Charge (int amount_cents, string currency, string customer, StripeCreditCardInfo card, string description)
         {
             if (amount_cents < 0)
                 throw new ArgumentOutOfRangeException ("amount_cents", "Must be greater than or equal 0");
@@ -157,19 +210,19 @@ namespace Xamarin.Payments.Stripe {
             }
             str.Length--;
             string ep = String.Format ("{0}/charges", api_endpoint);
-            return DoRequest<StripeCharge> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeCharge> (ep, HttpMethod.Post, str.ToString ());
         }
 
-        public StripeCharge GetCharge (string charge_id)
+        public async Task<StripeCharge> GetCharge (string charge_id)
         {
             if (String.IsNullOrEmpty (charge_id))
                 throw new ArgumentNullException ("charge_id");
 
             string ep = String.Format ("{0}/charges/{1}", api_endpoint, HttpUtility.UrlEncode (charge_id));
-            return DoRequest<StripeCharge> (ep);
+            return await DoRequest<StripeCharge> (ep);
         }
 
-        public StripeCollection<StripeCharge> GetCharges (int offset = 0, int count = 10, string customer_id = null, StripeDateTimeInfo created = null)
+        public async Task<StripeCollection<StripeCharge>> GetCharges (int offset = 0, int count = 10, string customer_id = null, StripeDateTimeInfo created = null)
         {
             if (offset < 0)
                 throw new ArgumentOutOfRangeException ("offset");
@@ -189,10 +242,10 @@ namespace Xamarin.Payments.Stripe {
 
             str.Length--;
             string ep = String.Format ("{0}/charges?{1}", api_endpoint, str);
-            return DoRequest<StripeCollection<StripeCharge>> (ep);
+            return await DoRequest<StripeCollection<StripeCharge>> (ep);
         }
 
-        public StripeDispute UpdateDispute (string charge_id, string evidence)
+        public async Task<StripeDispute> UpdateDispute (string charge_id, string evidence)
         {
             if (String.IsNullOrEmpty (charge_id))
                 throw new ArgumentNullException ("charge_id");
@@ -201,21 +254,21 @@ namespace Xamarin.Payments.Stripe {
                 throw new ArgumentNullException ("evidence");
 
             string ep = String.Format ("{0}/charges/{1}/dispute", api_endpoint, HttpUtility.UrlEncode (charge_id));
-            return DoRequest<StripeDispute> (ep, "POST", String.Format ("evidence={0}", HttpUtility.UrlEncode (evidence)));
+            return await DoRequest<StripeDispute> (ep, HttpMethod.Post, String.Format ("evidence={0}", HttpUtility.UrlEncode (evidence)));
         }
 
         #endregion
         #region Refund
-        public StripeCharge Refund (string charge_id)
+        public async Task<StripeCharge> Refund (string charge_id)
         {
             if (String.IsNullOrEmpty (charge_id))
                 throw new ArgumentNullException ("charge_id");
 
             string ep = String.Format ("{0}/charges/{1}/refund", api_endpoint, HttpUtility.UrlEncode (charge_id));
-            return DoRequest<StripeCharge> (ep, "POST", null);
+            return await DoRequest<StripeCharge> (ep, HttpMethod.Post, null);
         }
 
-        public StripeCharge Refund (string charge_id, int amount)
+        public async Task<StripeCharge> Refund (string charge_id, int amount)
         {
             if (String.IsNullOrEmpty (charge_id))
                 throw new ArgumentNullException ("charge_id");
@@ -223,11 +276,11 @@ namespace Xamarin.Payments.Stripe {
                 throw new ArgumentException ("Amount must be greater than zero.", "amount");
 
             string ep = String.Format ("{0}/charges/{1}/refund?amount={2}", api_endpoint, HttpUtility.UrlEncode (charge_id), amount);
-            return DoRequest<StripeCharge> (ep, "POST", null);
+            return await DoRequest<StripeCharge> (ep, HttpMethod.Post, null);
         }
         #endregion
         #region Customer
-        StripeCustomer CreateOrUpdateCustomer (string id, StripeCustomerInfo customer)
+        async Task<StripeCustomer> CreateOrUpdateCustomer (string id, StripeCustomerInfo customer)
         {
             StringBuilder str = UrlEncode (customer);
 
@@ -235,37 +288,37 @@ namespace Xamarin.Payments.Stripe {
             if (id != null)
                 format = "{0}/customers/{1}"; // Update
             string ep = String.Format (format, api_endpoint, HttpUtility.UrlEncode (id));
-            return DoRequest<StripeCustomer> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeCustomer> (ep, HttpMethod.Post, str.ToString ());
         }
 
-        public StripeCustomer CreateCustomer (StripeCustomerInfo customer)
+        public async Task<StripeCustomer> CreateCustomer (StripeCustomerInfo customer)
         {
             if (customer == null)
                 throw new ArgumentNullException ("customer");
 
-            return CreateOrUpdateCustomer (null, customer);
+            return await CreateOrUpdateCustomer (null, customer);
         }
 
-        public StripeCustomer UpdateCustomer (string id, StripeCustomerInfo customer)
+        public async Task<StripeCustomer> UpdateCustomer (string id, StripeCustomerInfo customer)
         {
             if (String.IsNullOrEmpty (id))
                 throw new ArgumentNullException ("id");
             if (customer == null)
                 throw new ArgumentNullException ("customer");
 
-            return CreateOrUpdateCustomer (id, customer);
+            return await CreateOrUpdateCustomer (id, customer);
         }
 
-        public StripeCustomer GetCustomer (string customer_id)
+        public async Task<StripeCustomer> GetCustomer (string customer_id)
         {
             if (String.IsNullOrEmpty (customer_id))
                 throw new ArgumentNullException ("customer_id");
 
             string ep = String.Format ("{0}/customers/{1}", api_endpoint, HttpUtility.UrlEncode (customer_id));
-            return DoRequest<StripeCustomer> (ep);
+            return await DoRequest<StripeCustomer> (ep);
         }
 
-        public StripeCollection<StripeCustomer> GetCustomers (int offset = 0, int count = 10)
+        public async Task<StripeCollection<StripeCustomer>> GetCustomers (int offset = 0, int count = 10)
         {
             if (offset < 0)
                 throw new ArgumentOutOfRangeException ("offset");
@@ -274,26 +327,26 @@ namespace Xamarin.Payments.Stripe {
 
             string str = String.Format ("offset={0}&count={1}", offset, count);
             string ep = String.Format ("{0}/customers?{1}", api_endpoint, str);
-            return DoRequest<StripeCollection<StripeCustomer>> (ep);
+            return await DoRequest<StripeCollection<StripeCustomer>> (ep);
         }
 
-        public StripeCustomer DeleteCustomer (string customer_id)
+        public async Task<StripeCustomer> DeleteCustomer (string customer_id)
         {
             if (String.IsNullOrEmpty (customer_id))
                 throw new ArgumentNullException ("customer_id");
 
             string ep = String.Format ("{0}/customers/{1}", api_endpoint, HttpUtility.UrlEncode (customer_id));
-            return DoRequest<StripeCustomer> (ep, "DELETE", null);
+            return await DoRequest<StripeCustomer> (ep, HttpMethod.Delete, null);
         }
         #endregion
         #region Events
-        public StripeEvent GetEvent (string eventId)
+        public async Task<StripeEvent> GetEvent (string eventId)
         {
             string ep = string.Format ("{0}/events/{1}", api_endpoint, HttpUtility.UrlEncode (eventId));
-            return DoRequest<StripeEvent> (ep);
+            return await DoRequest<StripeEvent> (ep);
         }
 
-        public StripeCollection<StripeEvent> GetEvents (int offset = 0, int count = 10, string type = null, StripeDateTimeInfo created = null)
+        public async Task<StripeCollection<StripeEvent>> GetEvents (int offset = 0, int count = 10, string type = null, StripeDateTimeInfo created = null)
         {
             if (offset < 0)
                 throw new ArgumentOutOfRangeException ("offset");
@@ -314,121 +367,121 @@ namespace Xamarin.Payments.Stripe {
             str.Length--;
 
             string ep = String.Format ("{0}/events?{1}", api_endpoint, str);
-            return DoRequest<StripeCollection<StripeEvent>> (ep);
+            return await DoRequest<StripeCollection<StripeEvent>> (ep);
         }
 
         #endregion
 
         #region Tokens
-        public StripeCreditCardToken CreateToken (StripeCreditCardInfo card)
+        public async Task<StripeCreditCardToken> CreateToken (StripeCreditCardInfo card)
         {
             if (card == null)
                 throw new ArgumentNullException ("card");
             StringBuilder str = UrlEncode (card);
 
             string ep = string.Format ("{0}/tokens", api_endpoint);
-            return DoRequest<StripeCreditCardToken> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeCreditCardToken> (ep, HttpMethod.Post, str.ToString ());
         }
 
-        public StripeCreditCardToken GetToken (string tokenId)
+        public async Task<StripeCreditCardToken> GetToken (string tokenId)
         {
             if (string.IsNullOrEmpty (tokenId))
                 throw new ArgumentNullException (tokenId);
 
             string ep = string.Format ("{0}/tokens/{1}", api_endpoint, HttpUtility.UrlEncode (tokenId));
-            return DoRequest<StripeCreditCardToken> (ep);
+            return await DoRequest<StripeCreditCardToken> (ep);
         }
         #endregion
         #region Plans
-        public StripePlan CreatePlan (StripePlanInfo plan)
+        public async Task<StripePlan> CreatePlan (StripePlanInfo plan)
         {
             if (plan == null)
                 throw new ArgumentNullException ("plan");
             StringBuilder str = UrlEncode (plan);
 
             string ep = string.Format ("{0}/plans", api_endpoint);
-            return DoRequest<StripePlan> (ep, "POST", str.ToString ());
+            return await DoRequest<StripePlan> (ep, HttpMethod.Post, str.ToString ());
         }
 
-        public StripePlan GetPlan (string planId)
+        public async Task<StripePlan> GetPlan (string planId)
         {
             if (string.IsNullOrEmpty (planId))
                 throw new ArgumentNullException ("id");
 
             string ep = string.Format ("{0}/plans/{1}", api_endpoint, HttpUtility.UrlEncode (planId));
-            return DoRequest<StripePlan> (ep);
+            return await DoRequest<StripePlan> (ep);
         }
 
-        public StripePlan DeletePlan (string planId)
+        public async Task<StripePlan> DeletePlan (string planId)
         {
             if (string.IsNullOrEmpty (planId))
                 throw new ArgumentNullException ("id");
 
             string ep = string.Format ("{0}/plans/{1}", api_endpoint, HttpUtility.UrlEncode (planId));
-            return DoRequest<StripePlan> (ep, "DELETE", null);
+            return await DoRequest<StripePlan> (ep, HttpMethod.Delete, null);
         }
 
-        public StripeCollection<StripePlan> GetPlans (int offset = 0, int count = 10)
+        public async Task<StripeCollection<StripePlan>> GetPlans (int offset = 0, int count = 10)
         {
             string str = string.Format ("count={0}&offset={1}", count, offset);
             string ep = string.Format ("{0}/plans?{1}", api_endpoint, str);
-            return DoRequest<StripeCollection<StripePlan>> (ep);
+            return await DoRequest<StripeCollection<StripePlan>> (ep);
         }
         #endregion
         #region Subscriptions
-        public StripeSubscription Subscribe (string customerId, StripeSubscriptionInfo subscription)
+        public async Task<StripeSubscription> Subscribe (string customerId, StripeSubscriptionInfo subscription)
         {
             StringBuilder str = UrlEncode (subscription);
             string ep = string.Format (subscription_path, api_endpoint, HttpUtility.UrlEncode (customerId));
-            return DoRequest<StripeSubscription> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeSubscription> (ep, HttpMethod.Post, str.ToString ());
         }
 
-        public StripeSubscription GetSubscription (string customerId)
+        public async Task<StripeSubscription> GetSubscription (string customerId)
         {
             if (string.IsNullOrEmpty (customerId))
                 throw new ArgumentNullException ("customerId");
             string ep = string.Format (subscription_path, api_endpoint, HttpUtility.UrlEncode (customerId));
-            return DoRequest<StripeSubscription>(ep);
+            return await DoRequest<StripeSubscription>(ep);
         }
 
-        public StripeSubscription Unsubscribe (string customerId, bool atPeriodEnd)
+        public async Task<StripeSubscription> Unsubscribe (string customerId, bool atPeriodEnd)
         {
-            string ep = string.Format (subscription_path + "?at_period_end={2}", api_endpoint, HttpUtility.UrlEncode (customerId), atPeriodEnd.ToString (CultureInfo.InvariantCulture).ToLowerInvariant ());
-            return DoRequest<StripeSubscription> (ep, "DELETE", null);
+            string ep = string.Format (subscription_path + "?at_period_end={2}", api_endpoint, HttpUtility.UrlEncode (customerId), atPeriodEnd.ToString ().ToLowerInvariant ());
+            return await DoRequest<StripeSubscription> (ep, HttpMethod.Delete, null);
         }
         #endregion
         #region Invoice items
-        public StripeInvoiceItem CreateInvoiceItem (StripeInvoiceItemInfo item)
+        public async Task<StripeInvoiceItem> CreateInvoiceItem (StripeInvoiceItemInfo item)
         {
             if (string.IsNullOrEmpty (item.CustomerID))
                 throw new ArgumentNullException ("item.CustomerID");
             StringBuilder str = UrlEncode (item);
             string ep = string.Format ("{0}/invoiceitems", api_endpoint);
-            return DoRequest<StripeInvoiceItem> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeInvoiceItem> (ep, HttpMethod.Delete, str.ToString ());
         }
 
-        public StripeInvoiceItem GetInvoiceItem (string invoiceItemId)
+        public async Task<StripeInvoiceItem> GetInvoiceItem (string invoiceItemId)
         {
             if (string.IsNullOrEmpty (invoiceItemId))
                 throw new ArgumentNullException ("invoiceItemId");
             string ep = string.Format ("{0}/invoiceitems/{1}", api_endpoint, invoiceItemId);
-            return DoRequest<StripeInvoiceItem> (ep);
+            return await DoRequest<StripeInvoiceItem> (ep);
         }
 
-        public StripeInvoiceItem UpdateInvoiceItem (string invoiceItemId, StripeInvoiceItemInfo item)
+        public async Task<StripeInvoiceItem> UpdateInvoiceItem (string invoiceItemId, StripeInvoiceItemInfo item)
         {
             StringBuilder str = UrlEncode (item);
             string ep = string.Format ("{0}/invoiceitems/{1}", api_endpoint, invoiceItemId);
-            return DoRequest<StripeInvoiceItem> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeInvoiceItem> (ep, HttpMethod.Post, str.ToString ());
         }
 
-        public StripeInvoiceItem DeleteInvoiceItem (string invoiceItemId)
+        public async Task<StripeInvoiceItem> DeleteInvoiceItem (string invoiceItemId)
         {
             string ep = string.Format ("{0}/invoiceitems/{1}", api_endpoint, invoiceItemId);
-            return DoRequest<StripeInvoiceItem> (ep, "DELETE", null);
+            return await DoRequest<StripeInvoiceItem> (ep, HttpMethod.Delete, null);
         }
 
-        public StripeCollection<StripeInvoiceItem> GetInvoiceItems (int offset = 0, int count = 10, string customerId = null, StripeDateTimeInfo created = null)
+        public async Task<StripeCollection<StripeInvoiceItem>> GetInvoiceItems (int offset = 0, int count = 10, string customerId = null, StripeDateTimeInfo created = null)
         {
             if (offset < 0)
                 throw new ArgumentOutOfRangeException ("offset");
@@ -448,20 +501,20 @@ namespace Xamarin.Payments.Stripe {
             
             str.Length--;
             string ep = String.Format ("{0}/invoiceitems?{1}", api_endpoint, str);
-            return DoRequest<StripeCollection<StripeInvoiceItem>> (ep);
+            return await DoRequest<StripeCollection<StripeInvoiceItem>> (ep);
         }
 
         #endregion
         #region Invoices
-        public StripeInvoice GetInvoice (string invoiceId)
+        public async Task<StripeInvoice> GetInvoice (string invoiceId)
         {
             if (string.IsNullOrEmpty (invoiceId))
                 throw new ArgumentNullException ("invoiceId");
             string ep = string.Format ("{0}/invoices/{1}", api_endpoint, invoiceId);
-            return DoRequest<StripeInvoice> (ep);
+            return await DoRequest<StripeInvoice> (ep);
         }
         
-        public StripeCollection<StripeInvoice> GetInvoices (int offset = 0, int count = 10, string customerId = null)
+        public async Task<StripeCollection<StripeInvoice>> GetInvoices (int offset = 0, int count = 10, string customerId = null)
         {
             if (offset < 0)
                 throw new ArgumentOutOfRangeException ("offset");
@@ -476,27 +529,27 @@ namespace Xamarin.Payments.Stripe {
 
             str.Length--;
             string ep = String.Format ("{0}/invoices?{1}", api_endpoint, str);
-            return DoRequest<StripeCollection<StripeInvoice>>(ep);
+            return await DoRequest<StripeCollection<StripeInvoice>>(ep);
         }
 
-        public StripeInvoice GetUpcomingInvoice (string customerId)
+        public async Task<StripeInvoice> GetUpcomingInvoice (string customerId)
         {
             if (string.IsNullOrEmpty (customerId))
                 throw new ArgumentOutOfRangeException ("customerId");
             string ep = String.Format ("{0}/invoices/upcoming?customer={1}", api_endpoint, customerId);
-            return DoRequest<StripeInvoice> (ep);
+            return await DoRequest<StripeInvoice> (ep);
         }
 
-        public StripeCollection<StripeLineItem> GetInvoiceLines (string invoiceId)
+        public async Task<StripeCollection<StripeLineItem>> GetInvoiceLines (string invoiceId)
         {
             if (string.IsNullOrEmpty (invoiceId))
                 throw new ArgumentNullException ("invoiceId");
             string ep = string.Format ("{0}/invoices/{1}/lines", api_endpoint, invoiceId);
-            return DoRequest<StripeCollection<StripeLineItem>> (ep);
+            return await DoRequest<StripeCollection<StripeLineItem>> (ep);
         }
         #endregion
         #region Coupons
-        public StripeCoupon CreateCoupon (StripeCouponInfo coupon)
+        public async Task<StripeCoupon> CreateCoupon (StripeCouponInfo coupon)
         {
             if (coupon == null)
                 throw new ArgumentNullException ("coupon");
@@ -506,37 +559,37 @@ namespace Xamarin.Payments.Stripe {
                 throw new ArgumentException ("MonthsForDuration must be greater than 1 when Duration = Repeating");
             StringBuilder str = UrlEncode (coupon);
             string ep = string.Format ("{0}/coupons", api_endpoint);
-            return DoRequest<StripeCoupon> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeCoupon> (ep, HttpMethod.Post, str.ToString ());
         }
 
-        public StripeCoupon GetCoupon (string couponId)
+        public async Task<StripeCoupon> GetCoupon (string couponId)
         {
             if (string.IsNullOrEmpty (couponId))
                 throw new ArgumentNullException ("couponId");
             string ep = string.Format ("{0}/coupons/{1}", api_endpoint, couponId);
-            return DoRequest<StripeCoupon> (ep);
+            return await DoRequest<StripeCoupon> (ep);
         }
 
-        public StripeCoupon DeleteCoupon (string couponId)
+        public async Task<StripeCoupon> DeleteCoupon (string couponId)
         {
             if (string.IsNullOrEmpty (couponId))
                 throw new ArgumentNullException ("couponId");
             string ep = string.Format ("{0}/coupons/{1}", api_endpoint, couponId);
-            return DoRequest<StripeCoupon> (ep, "DELETE", null);
+            return await DoRequest<StripeCoupon> (ep, HttpMethod.Delete, null);
         }
 
-        public StripeCollection<StripeCoupon> GetCoupons (int offset = 0, int count = 10)
+        public async Task<StripeCollection<StripeCoupon>> GetCoupons (int offset = 0, int count = 10)
         {
             if (offset < 0)
                 throw new ArgumentOutOfRangeException ("offset");
             if (count > 100)
                 throw new ArgumentOutOfRangeException ("count");
             string ep = string.Format ("{0}/coupons?offset={0}&count={1}", api_endpoint, offset, count);
-            return DoRequest<StripeCollection<StripeCoupon>> (ep);
+            return await DoRequest<StripeCollection<StripeCoupon>> (ep);
         }
         #endregion
         #region Cards
-        public StripeCard CreateCard (string customer_id, StripeCreditCardInfo card)
+        public async Task<StripeCard> CreateCard (string customer_id, StripeCreditCardInfo card)
         {
             if (string.IsNullOrWhiteSpace (customer_id)) {
                 throw new ArgumentNullException ("customer_id");
@@ -544,10 +597,10 @@ namespace Xamarin.Payments.Stripe {
 
             StringBuilder str = UrlEncode (card);
             string ep = String.Format ("{0}/customers/{1}/cards", api_endpoint, HttpUtility.UrlEncode (customer_id));
-            return DoRequest<StripeCard> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeCard> (ep, HttpMethod.Post, str.ToString ());
         }
 
-        public StripeCard DeleteCard (string customer_id, string card_id)
+        public async Task<StripeCard> DeleteCard (string customer_id, string card_id)
         {
             if (string.IsNullOrWhiteSpace (customer_id)) {
                 throw new ArgumentNullException ("customer_id");
@@ -558,10 +611,10 @@ namespace Xamarin.Payments.Stripe {
 
             string ep = string.Format ("{0}/customers/{1}/cards/{2}", api_endpoint, HttpUtility.UrlEncode (customer_id),
                                        HttpUtility.UrlEncode (card_id));
-            return DoRequest<StripeCard> (ep, "DELETE", null);
+            return await DoRequest<StripeCard> (ep, HttpMethod.Delete, null);
         }
 
-        public StripeCard UpdateCard (string customer_id, StripeUpdateCreditCardInfo card)
+        public async Task<StripeCard> UpdateCard (string customer_id, StripeUpdateCreditCardInfo card)
         {
             if (string.IsNullOrWhiteSpace (customer_id))
                 throw new ArgumentNullException ("customer_id");
@@ -574,7 +627,7 @@ namespace Xamarin.Payments.Stripe {
             string format = "{0}/customers/{1}/cards/{2}";
             string ep = string.Format (format, api_endpoint, HttpUtility.UrlEncode (customer_id),
                                        HttpUtility.UrlEncode (card.ID));
-            return DoRequest<StripeCard> (ep, "POST", str.ToString ());
+            return await DoRequest<StripeCard> (ep, HttpMethod.Post, str.ToString ());
         }
         #endregion
         public int TimeoutSeconds { get; set; }

@@ -39,7 +39,7 @@ namespace Xamarin.Payments.Stripe {
             if (!string.IsNullOrEmpty (Coupon))
                 sb.AppendFormat ("coupon={0}&", HttpUtility.UrlEncode (Coupon));
             if (Prorate != null && Prorate.HasValue)
-                sb.AppendFormat ("prorate={0}&", Prorate.Value.ToString (CultureInfo.InvariantCulture).ToLowerInvariant ());
+                sb.AppendFormat ("prorate={0}&", Prorate.Value.ToString ().ToLowerInvariant ());
             if (TrialEnd != null)
                 sb.AppendFormat ("trial_end={0}&", TrialEnd.Value.ToUnixEpoch ());
             if (Card != null)

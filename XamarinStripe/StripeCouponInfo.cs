@@ -19,6 +19,7 @@
 using System;
 using System.Text;
 using System.Web;
+//using PCLWebUtility;
 
 namespace Xamarin.Payments.Stripe {
     public class StripeCouponInfo : IUrlEncoderInfo {

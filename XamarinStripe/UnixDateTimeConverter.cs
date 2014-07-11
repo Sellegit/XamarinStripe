@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 using System;
-
+using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -25,7 +25,7 @@ namespace Xamarin.Payments.Stripe {
     public class UnixDateTimeConverter : DateTimeConverterBase {
         static bool IsNullable (Type type)
         {
-            if (!type.IsValueType)
+            if (!type.GetTypeInfo().IsValueType)
                 return true; // ref-type
             if (Nullable.GetUnderlyingType (type) != null)
                 return true; // Nullable<T>

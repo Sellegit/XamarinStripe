@@ -48,7 +48,7 @@ namespace Xamarin.Payments.Stripe {
             if (TrialEnd.HasValue)
                 sb.AppendFormat ("trial_end={0}&", TrialEnd.Value.ToUnixEpoch ());
             if (Validate.HasValue)
-                sb.AppendFormat ("validate={0}&", Validate.Value.ToString (CultureInfo.InvariantCulture).ToLowerInvariant ());
+                sb.AppendFormat ("validate={0}&", Validate.Value.ToString ().ToLowerInvariant ());
             if (DefaultCardId != null)
                 sb.AppendFormat ("default_card={0}&", HttpUtility.UrlEncode (DefaultCardId));
         }

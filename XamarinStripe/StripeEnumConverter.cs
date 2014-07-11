@@ -21,14 +21,15 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System.Reflection;
 
 namespace Xamarin.Payments.Stripe {
-    public class StripeEnumConverter<T> : JsonConverter where T : struct, IConvertible {
+    public class StripeEnumConverter<T> : JsonConverter where T : struct {//, IConvertible {
         Dictionary<string, string> values;
         public StripeEnumConverter ()
         {
             values = new Dictionary<string, string> ();
-            if (!typeof (T).IsEnum)
+            if (!typeof (T).GetTypeInfo().IsEnum)
                 throw new InvalidCastException ("Specified type T must be an enum");
         }
 
