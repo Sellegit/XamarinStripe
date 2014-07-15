@@ -56,13 +56,11 @@ namespace Xamarin.Payments.Stripe {
             var requestMessage = new HttpRequestMessage (method, url);
             requestMessage.Headers.Add ("User-Agent", user_agent);
             var concat = apiKey + ":";
-            Debug.WriteLine (concat);
-            Debug.WriteLine (Base64Encode (concat));
             requestMessage.Headers.Add ("Authorization", "Basic " + Base64Encode (concat));
 //            if (method == HttpMethod.Post) {
 //                requestMessage.Headers.Add ("Content-Type", "application/x-www-form-urlencoded");
 //            }
-            Debug.WriteLine ("content: " + body);
+            
             if (body != null) {
                 requestMessage.Content = new StringContent (body);
                 if (method == HttpMethod.Post) {
